@@ -1,0 +1,24 @@
+# Secrets & config
+backend/.env
+register.json
+
+# Database
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Data dirs
+backend/uploads/
+backend/models_cache/
+backend/chroma_data/
+
+# Node
+frontend/node_modules/
+
+# Build output
+frontend/dist/

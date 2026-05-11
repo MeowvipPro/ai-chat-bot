@@ -1,0 +1,26 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    env_file: ./backend/.env
+    volumes:
+      - backend_uploads:/app/uploads
+      - backend_chroma:/app/chroma_data
+      - backend_db:/app
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  backend_uploads:
+  backend_chroma:
+  backend_db:
