@@ -1,0 +1,59 @@
+services:
+  - type: web
+    name: ai-chat-bot-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    disk:
+      name: backend-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DB_TYPE
+        value: sqlite
+      - key: SQLITE_PATH
+        value: /data/app.db
+      - key: UPLOAD_DIR
+        value: /data/uploads
+      - key: CHROMA_PERSIST_DIR
+        value: /data/chroma_data
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 30
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: 7
+      - key: EMBEDDING_MODEL
+        value: all-MiniLM-L6-v2
+      - key: HF_DISABLE_SSL
+        value: "false"
+      - key: MAX_FILE_SIZE_MB
+        value: 50
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: ai-chat-bot-frontend
+          property: hostWithScheme
+      # Set your AI provider keys in the Render dashboard:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_REGION
+        value: us-east-1
+
+  - type: web
+    name: ai-chat-bot-frontend
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    envVars:
+      - key: BACKEND_URL
+        fromService:
+          type: web
+          name: ai-chat-bot-backend
+          property: hostWithScheme
