@@ -38,6 +38,8 @@ services:
           name: ai-chat-bot-frontend
           property: hostWithScheme
       # Set your AI provider keys in the Render dashboard:
+      - key: GEMINI_API_KEY
+        sync: false
       - key: OPENAI_API_KEY
         sync: false
       - key: AWS_ACCESS_KEY_ID

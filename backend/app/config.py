@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     # OpenAI
     OPENAI_API_KEY: str = ""
 
+    # Gemini
+    GEMINI_API_KEY: str = ""
+
     # HuggingFace
     HF_MODEL_NAME: str = "mistralai/Mistral-7B-Instruct-v0.1"
     HF_MODELS_DIR: str = "./models_cache"
