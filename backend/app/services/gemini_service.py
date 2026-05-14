@@ -1,28 +1,37 @@
+import json
 from typing import AsyncIterator, Union
-import google.generativeai as genai
+import httpx
 from app.services.ai_provider import AIProvider
 from app.config import get_settings
 
 settings = get_settings()
 
+_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+
 
 class GeminiProvider(AIProvider):
     def __init__(self):
-        genai.configure(api_key=settings.GEMINI_API_KEY)
+        self.api_key = settings.GEMINI_API_KEY
+        self.client = httpx.AsyncClient(verify=False, timeout=120)
 
-    def _convert_messages(self, messages: list[dict]) -> tuple[str | None, list[dict]]:
-        system_prompt = None
-        gemini_messages = []
+    def _build_body(self, messages: list[dict], temperature: float, max_tokens: int) -> dict:
+        system_parts = []
+        contents = []
         for msg in messages:
-            role = msg["role"]
-            content = msg["content"]
+            role, content = msg["role"], msg["content"]
             if role == "system":
-                system_prompt = content
+                system_parts.append({"text": content})
             elif role == "user":
-                gemini_messages.append({"role": "user", "parts": [content]})
+                contents.append({"role": "user", "parts": [{"text": content}]})
             elif role == "assistant":
-                gemini_messages.append({"role": "model", "parts": [content]})
-        return system_prompt, gemini_messages
+                contents.append({"role": "model", "parts": [{"text": content}]})
+        body: dict = {
+            "contents": contents,
+            "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens},
+        }
+        if system_parts:
+            body["systemInstruction"] = {"parts": system_parts}
+        return body
 
     async def generate(
         self,
@@ -32,29 +41,36 @@ class GeminiProvider(AIProvider):
         max_tokens: int = 2048,
         stream: bool = False,
     ) -> Union[str, AsyncIterator[str]]:
-        system_prompt, gemini_messages = self._convert_messages(messages)
-        model_kwargs = {}
-        if system_prompt:
-            model_kwargs["system_instruction"] = system_prompt
-        client = genai.GenerativeModel(model, **model_kwargs)
-        generation_config = genai.GenerationConfig(
-            temperature=temperature,
-            max_output_tokens=max_tokens,
-        )
         if stream:
-            return self._stream(client, gemini_messages, generation_config)
-        response = await client.generate_content_async(
-            gemini_messages, generation_config=generation_config
-        )
-        return response.text
+            return self._stream(messages, model, temperature, max_tokens)
+        url = f"{_BASE}/{model}:generateContent?key={self.api_key}"
+        body = self._build_body(messages, temperature, max_tokens)
+        resp = await self.client.post(url, json=body)
+        resp.raise_for_status()
+        data = resp.json()
+        return data["candidates"][0]["content"]["parts"][0]["text"]
 
-    async def _stream(self, client, messages, generation_config) -> AsyncIterator[str]:
-        response = await client.generate_content_async(
-            messages, generation_config=generation_config, stream=True
-        )
-        async for chunk in response:
-            if chunk.text:
-                yield chunk.text
+    async def _stream(
+        self, messages: list[dict], model: str, temperature: float, max_tokens: int
+    ) -> AsyncIterator[str]:
+        url = f"{_BASE}/{model}:streamGenerateContent?key={self.api_key}&alt=sse"
+        body = self._build_body(messages, temperature, max_tokens)
+        async with httpx.AsyncClient(verify=False, timeout=120) as client:
+            async with client.stream("POST", url, json=body) as resp:
+                resp.raise_for_status()
+                async for line in resp.aiter_lines():
+                    if not line.startswith("data:"):
+                        continue
+                    raw = line[5:].strip()
+                    if not raw:
+                        continue
+                    try:
+                        chunk = json.loads(raw)
+                        text = chunk["candidates"][0]["content"]["parts"][0]["text"]
+                        if text:
+                            yield text
+                    except Exception:
+                        continue
 
     async def get_available_models(self) -> list[dict]:
         return [

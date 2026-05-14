@@ -27,8 +27,14 @@ def _get_embedder():
         )
         _embedder = session.client("bedrock-runtime")
     else:
+        import os, requests as _req
+        _orig = _req.Session.request
+        _req.Session.request = lambda self, *a, **kw: _orig(self, *a, **{**kw, "verify": False})
+        os.environ.setdefault("HF_HUB_DISABLE_SSL_VERIFY", "1")
+        os.environ.setdefault("REQUESTS_CA_BUNDLE", "")
         from sentence_transformers import SentenceTransformer
         _embedder = SentenceTransformer(settings.EMBEDDING_MODEL)
+        _req.Session.request = _orig
     return _embedder
 
 

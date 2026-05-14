@@ -1,6 +1,9 @@
 import os
 import asyncio
+import logging
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+
+logger = logging.getLogger(__name__)
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import get_current_user
@@ -99,7 +102,8 @@ async def _process_file(file_id: int, file_path: str, file_type: str):
 
         db_file.processing_status = "completed"
         db.commit()
-    except Exception:
+    except Exception as e:
+        logger.exception(f"File {file_id} processing failed: {e}")
         db_file.processing_status = "failed"
         db.commit()
     finally:
