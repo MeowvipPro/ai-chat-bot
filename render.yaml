@@ -2,7 +2,7 @@ services:
   - type: web
     name: ai-chat-bot-backend
     runtime: docker
-    dockerfilePath: Dockerfile
+    dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /api/health
     disk:
@@ -52,7 +52,7 @@ services:
   - type: web
     name: ai-chat-bot-frontend
     runtime: docker
-    dockerfilePath: Dockerfile
+    dockerfilePath: ./frontend/Dockerfile
     dockerContext: ./frontend
     envVars:
       - key: BACKEND_URL
