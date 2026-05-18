@@ -88,7 +88,70 @@ npm run dev
 
 The frontend will be available at http://localhost:5173. Vite proxies `/api` requests to the backend.
 
-### Docker Compose (all-in-one)
+## Run locally on Windows (no Docker)
+
+One-time setup:
+
+```powershell
+# Backend deps
+cd backend
+pip install -r requirements.txt
+Copy-Item .env.example .env   # then edit .env with your API keys
+
+# Frontend deps
+cd ..\frontend
+npm install
+```
+
+Then from the repo root, start both servers in two windows:
+
+```powershell
+.\start.ps1
+```
+
+Open http://localhost:5173 in your browser. The frontend dev server proxies `/api` to the backend on port 8000, so nothing else needs configuring.
+
+If PowerShell blocks the script with an execution-policy error, run it once with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start.ps1
+```
+
+To stop, just close the two spawned PowerShell windows.
+
+## Deploying without Docker
+
+The included `render.yaml` is **Docker-free**: backend runs on Render's native Python runtime, frontend ships as a Render Static Site. To deploy:
+
+1. Push this repo to GitHub.
+2. In the Render dashboard → **New → Blueprint** → point at this repo.
+3. Render reads `render.yaml` and creates two services:
+   - `ai-chat-bot-backend` (Python) — `pip install -r requirements.txt` then `uvicorn app.main:app`
+   - `ai-chat-bot-frontend` (Static) — `npm ci && npm run build`, serves `dist/`
+4. In the backend service settings, fill in `OPENAI_API_KEY` / `GEMINI_API_KEY` / `AWS_*` secrets (they're declared with `sync: false` so Render won't sync them automatically).
+5. The frontend gets `VITE_API_BASE_URL` injected at build time pointing at the backend; the backend gets `FRONTEND_URL` for CORS.
+
+That's it — no Dockerfiles, no nginx, no compose.
+
+### Other hosts (any VPS / Fly / Railway / etc.)
+
+Same idea, just run the two processes:
+
+```bash
+# Backend
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+# Frontend (build static assets, then serve dist/ with any static server)
+cd frontend
+VITE_API_BASE_URL=https://your-backend.example.com npm run build
+npx serve dist  # or upload dist/ to Netlify / Vercel / S3 / Cloudflare Pages
+```
+
+Set `FRONTEND_URL` on the backend to the frontend's public URL (used for CORS).
+
+### Docker Compose (optional, if you prefer containers)
 
 ```bash
 docker compose up --build

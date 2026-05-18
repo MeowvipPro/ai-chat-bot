@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import api from "../services/api";
+import api, { API_BASE } from "../services/api";
 
 export interface ChatMessage {
   id?: number;
@@ -107,7 +107,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     try {
       const token = localStorage.getItem("access_token");
-      const response = await fetch(`/api/chats/${activeChat.id}/messages`, {
+      const response = await fetch(`${API_BASE}/chats/${activeChat.id}/messages`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
